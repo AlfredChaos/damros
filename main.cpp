@@ -31,7 +31,7 @@ void stopServerRunning(int p)
 // Host: 192.168.88.108:16555
 // User-Agent: curl/7.61.1
 // Accept: */*
-int parse_request_line(char buff, METHOD *m_method)
+int parse_request_line(char *buff, METHOD *m_method)
 {
     char *m_url = strpbrk(buff, " \t");
     if (!m_url)
@@ -60,7 +60,7 @@ int parse_request_line(char buff, METHOD *m_method)
 
 int main()
 {
-    METHOD *m_method;
+    METHOD m_method;
     struct sockaddr_in servaddr;    // 用于存放ip和端口的结构
     char buff[BUFFSIZE];    // 用于收发数据
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -96,12 +96,14 @@ int main()
         }
         bzero(buff, BUFFSIZE);
         recv(connfd, buff, BUFFSIZE - 1, 0);
-        printf("Recv: %s\n", buff);
-        if (parse_request_line(buff, m_method) == -1)
-        {
-            printf("parse request line error.");
+        printf("%s\n", buff);
+        char *text;
+        memcpy(text, buff, BUFFSIZE*sizeof(char));
+        if (parse_request_line(text, &m_method) == -1) {
+            printf("parsing request line error.");
+            continue;
         }
-        printf("m_method = %s\n", m_method);
+        printf("m_method = %d\n", m_method);
         send(connfd, buff, strlen(buff), 0);
         close(connfd);
     }
