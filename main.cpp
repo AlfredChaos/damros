@@ -31,7 +31,7 @@ void stopServerRunning(int p)
 // Host: 192.168.88.108:16555
 // User-Agent: curl/7.61.1
 // Accept: */*
-int parse_request_line(char *buff, METHOD *m_method)
+int parse_request_line(char *buff, METHOD m_method)
 {
     char *m_url = strpbrk(buff, " \t");
     if (!m_url)
@@ -99,7 +99,7 @@ int main()
         printf("%s\n", buff);
         char *text;
         memcpy(text, buff, BUFFSIZE*sizeof(char));
-        if (parse_request_line(text, &m_method) == -1) {
+        if (parse_request_line(text, m_method) == -1) {
             printf("parsing request line error.");
             continue;
         }
