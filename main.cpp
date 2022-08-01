@@ -31,7 +31,7 @@ void stopServerRunning(int p)
 // Host: 192.168.88.108:16555
 // User-Agent: curl/7.61.1
 // Accept: */*
-int parse_request_line(char *buff, METHOD m_method)
+int parse_request_line(char *buff, METHOD *m_method)
 {
     char *m_url = strpbrk(buff, " \t");
     if (!m_url)
@@ -42,16 +42,16 @@ int parse_request_line(char *buff, METHOD m_method)
     char *method = buff;
     if (strcasecmp(method, "GET") == 0)
     {
-        m_method = GET;
+        *m_method = GET;
     } else if (strcasecmp(method, "POST") == 0)
     {
-        m_method = POST;
+        *m_method = POST;
     } else if (strcasecmp(method, "DELETE") == 0)
     {
-        m_method = DELETE;
+        *m_method = DELETE;
     } else if (strcasecmp(method, "PUT") == 0)
     {
-        m_method = PUT;
+        *m_method = PUT;
     } else {
         return -1;
     }
@@ -97,13 +97,12 @@ int main()
         bzero(buff, BUFFSIZE);
         recv(connfd, buff, BUFFSIZE - 1, 0);
         printf("%s\n", buff);
-        char *text;
-        memcpy(text, buff, BUFFSIZE*sizeof(char));
-        if (parse_request_line(text, m_method) == -1) {
+        if (parse_request_line(buff, &m_method) == -1) {
             printf("parsing request line error.");
             continue;
         }
         printf("m_method = %d\n", m_method);
+        printf("%s\n", buff);
         send(connfd, buff, strlen(buff), 0);
         close(connfd);
     }
