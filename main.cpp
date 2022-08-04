@@ -1,39 +1,44 @@
-#include <iostream>
-#include <cstdio>
-#include <cstring>
 #include <cstdlib>
+#include <iostream>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/unistd.h>
-#include <sys/types.h>
 #include <sys/errno.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <time.h>
 #define BUFFSIZE 2048
-#define DEFAULT_PORT 38804    // 指定端口为38804
 #define MAXLINK 2048
 using namespace std;
 
 int sockfd, connfd;    // 定义服务端套接字和客户端套接字
 enum METHOD
 {
-    GET = 0,
+    NONE=0,
+    GET,
     POST,
     DELETE,
     PUT
 };
 
-void stopServerRunning(int p)
+void stop_server_running(int p)
 {
     close(sockfd);
     printf("Close Server\n");
     exit(0);
 }
 
+int random_port()
+{
+    srand((unsigned)time(NULL));
+    return rand() % 65536;
+}
+
 // GET / HTTP/1.1
 // Host: 192.168.88.108:16555
 // User-Agent: curl/7.61.1
 // Accept: */*
-int parse_request_line(char *text, METHOD *m_method)
+int parse_request_line(char *text, METHOD *m_method, char *response)
 {
     char *m_url = strpbrk(text, " \t");
     if (!m_url)
@@ -41,22 +46,30 @@ int parse_request_line(char *text, METHOD *m_method)
         return -1;
     }
     *m_url++ = '\0';
-    char *method = text;
-    if (strcasecmp(method, "GET") == 0)
+    // get request method
+    if (strcasecmp(text, "GET") == 0)
     {
         *m_method = GET;
-    } else if (strcasecmp(method, "POST") == 0)
+    } else if (strcasecmp(text, "POST") == 0)
     {
         *m_method = POST;
-    } else if (strcasecmp(method, "DELETE") == 0)
+    } else if (strcasecmp(text, "DELETE") == 0)
     {
         *m_method = DELETE;
-    } else if (strcasecmp(method, "PUT") == 0)
+    } else if (strcasecmp(text, "PUT") == 0)
     {
         *m_method = PUT;
     } else {
         return -1;
     }
+    // get http version
+    if (strcasecmp(m_url, "http") != 0) {
+        cout << "get error" << endl;
+        return -1;
+    }
+    char *m_vershon = strpbrk(m_url, " \t");
+    *m_vershon++ = '\0';
+    cout << m_vershon << endl;
     return 0;
 }
 
@@ -74,7 +87,8 @@ int main()
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(DEFAULT_PORT);
+    int port_number = random_port();
+    servaddr.sin_port = htons(port_number);
     if (-1 == bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)))
     {
         printf("Bind error(%d): %s\n", errno, strerror(errno));
@@ -86,10 +100,10 @@ int main()
         return -1;
     }
 
-    printf("Listening...\n");
+    printf("Listening on 127.0.0.1:%d...\n", port_number);
     while (true)
     {
-        signal(SIGINT, stopServerRunning);    // 这句用于在输入Ctrl+C的时候关闭服务器
+        signal(SIGINT, stop_server_running);    // 这句用于在输入Ctrl+C的时候关闭服务器
         connfd = accept(sockfd, NULL, NULL);
         if (-1 == connfd)
         {
@@ -100,14 +114,13 @@ int main()
         recv(connfd, buff, BUFFSIZE - 1, 0);
         printf("%s\n", buff);
         char text[BUFFSIZE]; // 拷贝数组
+        char response[BUFFSIZE];
         copy(begin(buff), end(buff), begin(text));
-        if (parse_request_line(text, &m_method) == -1) {
+        if (parse_request_line(text, &m_method, response) == -1) {
             printf("parsing request line error.");
             continue;
         }
-        printf("m_method = %d\n", m_method);
-        printf("%s\n", buff);
-        send(connfd, buff, strlen(buff), 0);
+        send(connfd, response, strlen(response), 0);
         close(connfd);
     }
     return 0;
